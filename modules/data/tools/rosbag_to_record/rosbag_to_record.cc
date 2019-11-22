@@ -54,7 +54,8 @@ using apollo::data::ChannelInfo;
 
 void PrintUsage() {
   std::cout << "Usage:\n"
-            << "  rosbag_to_record input.bag output.record" << std::endl;
+            << "  rosbag_to_record input.bag output.record [--small-channels]"
+            << std::endl;
 }
 
 bool convert_PointCloud(std::shared_ptr<apollo::drivers::PointCloud> proto,
@@ -112,7 +113,9 @@ bool convert_PointCloud(std::shared_ptr<apollo::drivers::PointCloud> proto,
 }
 
 int main(int argc, char **argv) {
-  if (argc != 3) {
+  const bool small_channels_only =
+      argc == 4 && std::string(argv[3]) == "--small-channels";
+  if (argc != 3 && !small_channels_only) {
     PrintUsage();
     return 0;
   }
@@ -236,6 +239,9 @@ int main(int argc, char **argv) {
     } else if (channel_name == "/apollo/routing_response") {
       auto pb_msg = m.instantiate<apollo::routing::RoutingResponse>();
       pb_msg->SerializeToString(&serialized_str);
+    } else if (channel_name == "/apollo/routing_response_history") {
+      auto pb_msg = m.instantiate<apollo::routing::RoutingResponse>();
+      pb_msg->SerializeToString(&serialized_str);
     } else if (channel_name == "/tf" || channel_name == "/tf_static") {
       auto rawdata = m.instantiate<tf2_msgs::TFMessage>();
       auto proto = std::make_shared<apollo::transform::TransformStampeds>();
@@ -291,6 +297,10 @@ int main(int argc, char **argv) {
       pb_msg->SerializeToString(&serialized_str);
     } else if (channel_name ==
                "/apollo/sensor/velodyne64/compensator/PointCloud2") {
+      if (small_channels_only) {
+        // Skip large channels silently.
+        continue;
+      }
       auto ros_msg = m.instantiate<sensor_msgs::PointCloud2>();
       auto pb_msg = std::make_shared<apollo::drivers::PointCloud>();
       if (!convert_PointCloud(pb_msg, ros_msg)) {

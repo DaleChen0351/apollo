@@ -32,20 +32,19 @@
 #include "modules/common/util/util.h"
 #include "modules/planning/common/planning_context.h"
 #include "modules/planning/common/planning_gflags.h"
+#include "modules/planning/tasks/utils/st_gap_estimator.h"
 
 namespace apollo {
 namespace planning {
 
-using common::ErrorCode;
-using common::Status;
-using common::VehicleConfigHelper;
-using common::math::Vec2d;
-using common::time::Clock;
-using perception::PerceptionObstacle;
+using apollo::common::ErrorCode;
+using apollo::common::Status;
+using apollo::common::VehicleConfigHelper;
+using apollo::common::math::Vec2d;
+using apollo::common::time::Clock;
+using apollo::perception::PerceptionObstacle;
 
-SpeedDecider::SpeedDecider(const TaskConfig& config) : Task(config) {
-  SetName("SpeedDecider");
-}
+SpeedDecider::SpeedDecider(const TaskConfig& config) : Task(config) {}
 
 common::Status SpeedDecider::Execute(Frame* frame,
                                      ReferenceLineInfo* reference_line_info) {
@@ -217,6 +216,14 @@ Status SpeedDecider::MakeObjectDecision(
       continue;
     }
 
+    // for Virtual obstacle, skip if center point NOT "on lane"
+    if (obstacle->IsVirtual()) {
+      const auto& obstacle_box = obstacle->PerceptionBoundingBox();
+      if (!reference_line_->IsOnLane(obstacle_box.center())) {
+        continue;
+      }
+    }
+
     // always STOP for pedestrian
     if (CheckStopForPedestrian(*mutable_obstacle, &pedestrian_stop_times)) {
       ObjectDecisionType stop_decision;
@@ -235,11 +242,6 @@ Status SpeedDecider::MakeObjectDecision(
       }
     }
 
-    auto box = obstacle->PerceptionBoundingBox();
-    common::SLPoint start_sl_point;
-    reference_line_->XYToSL({box.center_x(), box.center_y()}, &start_sl_point);
-    double start_abs_l = std::abs(start_sl_point.l());
-
     switch (location) {
       case BELOW:
         if (boundary.boundary_type() == STBoundary::BoundaryType::KEEP_CLEAR) {
@@ -248,10 +250,7 @@ Status SpeedDecider::MakeObjectDecision(
             mutable_obstacle->AddLongitudinalDecision("dp_st_graph/keep_clear",
                                                       stop_decision);
           }
-        } else if (CheckIsFollowByT(boundary) &&
-                   (boundary.max_t() - boundary.min_t() >
-                    FLAGS_follow_min_time_sec) &&
-                   start_abs_l < FLAGS_follow_min_obs_lateral_distance) {
+        } else if (CheckIsFollow(*obstacle, boundary)) {
           // stop for low_speed decelerating
           if (IsFollowTooClose(*mutable_obstacle)) {
             ObjectDecisionType stop_decision;
@@ -384,8 +383,8 @@ bool SpeedDecider::CreateFollowDecision(
   DCHECK_NOTNULL(follow_decision);
 
   const double follow_speed = init_point_.v();
-  const double follow_distance_s = -std::fmax(
-      follow_speed * FLAGS_follow_time_buffer, FLAGS_follow_min_distance);
+  const double follow_distance_s =
+      -StGapEstimator::EstimateProperFollowingGap(follow_speed);
 
   const auto& boundary = obstacle.path_st_boundary();
   const double reference_s =
@@ -420,7 +419,7 @@ bool SpeedDecider::CreateYieldDecision(
   DCHECK_NOTNULL(yield_decision);
 
   PerceptionObstacle::Type obstacle_type = obstacle.Perception().type();
-  double yield_distance = FLAGS_yield_distance;
+  double yield_distance = StGapEstimator::EstimateProperYieldingGap();
 
   const auto& obstacle_boundary = obstacle.path_st_boundary();
   const double yield_distance_s =
@@ -456,17 +455,14 @@ bool SpeedDecider::CreateOvertakeDecision(
     ObjectDecisionType* const overtake_decision) const {
   DCHECK_NOTNULL(overtake_decision);
 
-  constexpr double kOvertakeTimeBuffer = 3.0;    // in seconds
-  constexpr double kMinOvertakeDistance = 10.0;  // in meters
-
   const auto& velocity = obstacle.Perception().velocity();
   const double obstacle_speed =
       common::math::Vec2d::CreateUnitVec2d(init_point_.path_point().theta())
           .InnerProd(Vec2d(velocity.x(), velocity.y()));
 
-  const double overtake_distance_s = std::fmax(
-      std::fmax(init_point_.v(), obstacle_speed) * kOvertakeTimeBuffer,
-      kMinOvertakeDistance);
+  const double overtake_distance_s =
+      StGapEstimator::EstimateProperOvertakingGap(obstacle_speed,
+                                                  init_point_.v());
 
   const auto& boundary = obstacle.path_st_boundary();
   const double reference_line_fence_s =
@@ -495,16 +491,32 @@ bool SpeedDecider::CreateOvertakeDecision(
   return true;
 }
 
-bool SpeedDecider::CheckIsFollowByT(const STBoundary& boundary) const {
+bool SpeedDecider::CheckIsFollow(const Obstacle& obstacle,
+                                 const STBoundary& boundary) const {
+  const double obstacle_l_distance =
+      std::min(std::fabs(obstacle.PerceptionSLBoundary().start_l()),
+               std::fabs(obstacle.PerceptionSLBoundary().end_l()));
+  if (obstacle_l_distance > FLAGS_follow_min_obs_lateral_distance) {
+    return false;
+  }
+
+  // move towards adc
   if (boundary.bottom_left_point().s() > boundary.bottom_right_point().s()) {
     return false;
   }
+
   constexpr double kFollowTimeEpsilon = 1e-3;
   constexpr double kFollowCutOffTime = 0.5;
   if (boundary.min_t() > kFollowCutOffTime ||
       boundary.max_t() < kFollowTimeEpsilon) {
     return false;
   }
+
+  // cross lane but be moving to different direction
+  if (boundary.max_t() - boundary.min_t() < FLAGS_follow_min_time_sec) {
+    return false;
+  }
+
   return true;
 }
 
@@ -513,12 +525,17 @@ bool SpeedDecider::CheckStopForPedestrian(
     std::unordered_map<std::string, double>* pedestrian_stop_times) const {
   CHECK_NOTNULL(pedestrian_stop_times);
 
-  if (!FLAGS_enable_alwasy_stop_for_pedestrian) {
+  if (!FLAGS_enable_always_stop_for_pedestrian) {
     return false;
   }
 
   const auto& perception_obstacle = obstacle.Perception();
   if (perception_obstacle.type() != PerceptionObstacle::PEDESTRIAN) {
+    return false;
+  }
+
+  const auto& obstacle_sl_boundary = obstacle.PerceptionSLBoundary();
+  if (obstacle_sl_boundary.end_s() < adc_sl_boundary_.start_s()) {
     return false;
   }
 

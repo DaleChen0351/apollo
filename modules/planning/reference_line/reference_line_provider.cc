@@ -30,6 +30,7 @@
 #include "modules/common/configs/vehicle_config_helper.h"
 #include "modules/common/math/math_utils.h"
 #include "modules/common/time/time.h"
+#include "modules/common/util/point_factory.h"
 #include "modules/common/vehicle_state/vehicle_state_provider.h"
 #include "modules/map/hdmap/hdmap_util.h"
 #include "modules/map/pnc_map/path.h"
@@ -455,7 +456,7 @@ bool ReferenceLineProvider::GetNearestWayPointFromNavigationPath(
   const double kMaxDistance = 10.0;
   waypoint->lane = nullptr;
   std::vector<hdmap::LaneInfoConstPtr> lanes;
-  auto point = common::util::MakePointENU(state.x(), state.y(), state.z());
+  auto point = common::util::PointFactory::ToPointENU(state);
   if (std::isnan(point.x()) || std::isnan(point.y())) {
     AERROR << "vehicle state is invalid";
     return false;
@@ -563,6 +564,7 @@ bool ReferenceLineProvider::CreateReferenceLine(
   bool is_new_routing = false;
   {
     // Update routing in pnc_map
+    std::lock_guard<std::mutex> lock(pnc_map_mutex_);
     if (pnc_map_->IsNewRouting(routing)) {
       is_new_routing = true;
       if (!pnc_map_->UpdateRoutingResponse(routing)) {
@@ -733,8 +735,8 @@ bool ReferenceLineProvider::Shrink(const common::SLPoint &sl,
     new_forward_distance = forward_sl.s() - sl.s();
   }
   if (need_shrink) {
-    if (!reference_line->Shrink(sl.s(), new_backward_distance,
-                                new_forward_distance)) {
+    if (!reference_line->Segment(sl.s(), new_backward_distance,
+                                 new_forward_distance)) {
       AWARN << "Failed to shrink reference line";
     }
     if (!segments->Shrink(sl.s(), new_backward_distance,

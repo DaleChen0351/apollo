@@ -25,6 +25,7 @@
 
 #include "cyber/task/task.h"
 #include "modules/common/vehicle_state/proto/vehicle_state.pb.h"
+#include "modules/planning/common/planning_context.h"
 #include "modules/planning/common/planning_gflags.h"
 #include "modules/planning/common/trajectory/publishable_trajectory.h"
 #include "modules/planning/common/trajectory_stitcher.h"
@@ -80,8 +81,19 @@ void OpenSpaceTrajectoryProvider::Restart() {
 }
 
 Status OpenSpaceTrajectoryProvider::Process() {
+  ADEBUG << "trajectory provider";
   auto trajectory_data =
       frame_->mutable_open_space_info()->mutable_stitched_trajectory_result();
+
+  // generate stop trajectory at park_and_go check_stage
+  if (PlanningContext::Instance()
+          ->mutable_planning_status()
+          ->mutable_park_and_go()
+          ->in_check_stage()) {
+    ADEBUG << "ParkAndGo Stage Check.";
+    GenerateStopTrajectory(trajectory_data);
+    return Status::OK();
+  }
   // Start thread when getting in Process() for the first time
   if (FLAGS_enable_open_space_planner_thread && !thread_init_flag_) {
     task_future_ = cyber::Async(
@@ -116,6 +128,10 @@ Status OpenSpaceTrajectoryProvider::Process() {
         1.0 / static_cast<double>(FLAGS_planning_loop_rate);
     stitching_trajectory = TrajectoryStitcher::ComputeReinitStitchingTrajectory(
         planning_cycle_time, vehicle_state);
+    auto* open_space_status = PlanningContext::Instance()
+                                  ->mutable_planning_status()
+                                  ->mutable_open_space();
+    open_space_status->set_position_init(false);
   }
   // Get open_space_info from current frame
   const auto& open_space_info = frame_->open_space_info();

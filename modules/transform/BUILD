@@ -15,6 +15,7 @@ cc_library(
         "//cyber",
         "//modules/common/adapters:adapter_gflags",
         "//modules/transform/proto:transform_proto",
+        "@com_google_absl//absl/strings",
     ],
 )
 
@@ -45,6 +46,7 @@ cc_library(
     deps = [
         "//cyber",
         "//modules/common/adapters:adapter_gflags",
+        "//modules/common/util:message_util",
         "//modules/transform/proto:static_transform_conf_proto",
         "//modules/transform/proto:transform_proto",
         "@yaml_cpp//:yaml",

@@ -24,6 +24,7 @@ cc_library(
         "//modules/map/hdmap/adapter:opendrive_adapter",
         "//modules/map/proto:map_proto",
         "//modules/map/relative_map/proto:navigation_proto",
+        "@com_google_absl//absl/strings",
         "@glog",
     ],
 )
@@ -35,11 +36,10 @@ cc_library(
     copts = ["-DMODULE_NAME=\\\"map\\\""],
     deps = [
         ":hdmap",
-        "//cyber",
         "//modules/common/configs:config_gflags",
         "//modules/common/util",
-        "//modules/common/util:string_util",
         "//modules/map/relative_map/proto:navigation_proto",
+        "@com_google_absl//absl/strings",
     ],
 )
 

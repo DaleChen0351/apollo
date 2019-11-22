@@ -65,7 +65,6 @@ void PlanningTestBase::SetUpTestCase() {
   FLAGS_test_previous_planning_file = "";
   FLAGS_test_prediction_file = "";
   FLAGS_align_prediction_time = false;
-  FLAGS_estimate_current_vehicle_state = false;
   FLAGS_enable_reference_line_provider_thread = false;
   // FLAGS_enable_trajectory_check is temporarily disabled, otherwise EMPlanner
   // and LatticePlanner can't pass the unit test.
@@ -222,8 +221,8 @@ void PlanningTestBase::TrimPlanning(ADCTrajectory* origin,
 
 bool PlanningTestBase::RunPlanning(const std::string& test_case_name,
                                    int case_num, bool no_trajectory_point) {
-  const std::string golden_result_file = apollo::common::util::StrCat(
-      "result_", test_case_name, "_", case_num, ".pb.txt");
+  const std::string golden_result_file =
+      absl::StrCat("result_", test_case_name, "_", case_num, ".pb.txt");
 
   std::string full_golden_path = FLAGS_test_data_dir + "/" + golden_result_file;
 

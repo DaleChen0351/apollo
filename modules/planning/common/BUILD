@@ -10,11 +10,9 @@ cc_library(
     copts = [
         "-DMODULE_NAME=\\\"planning\\\"",
     ],
-    linkopts = [
-        "-lboost_thread",
-    ],
     deps = [
         "//modules/common/util:map_util",
+        "@boost",
     ],
 )
 
@@ -27,6 +25,7 @@ cc_test(
     deps = [
         ":indexed_list",
         "//modules/common/util",
+        "@boost",
         "@gtest//:main",
     ],
 )
@@ -98,6 +97,7 @@ cc_test(
         ":obstacle",
         "//modules/common/util",
         "//modules/perception/proto:perception_proto",
+        "@boost",
         "@gtest//:main",
     ],
 )
@@ -144,13 +144,8 @@ cc_library(
         "-DMODULE_NAME=\\\"planning\\\"",
     ],
     deps = [
-        ":planning_gflags",
-        "//cyber/common:log",
-        "//modules/map/pnc_map:path",
+        "//cyber/common",
         "//modules/planning/common/path:path_data",
-        "//modules/planning/proto:path_decider_info_proto",
-        "//modules/planning/proto:planning_config_proto",
-        "//modules/planning/proto:planning_proto",
         "//modules/planning/proto:planning_status_proto",
         "@eigen",
     ],
@@ -208,6 +203,7 @@ cc_library(
         ":st_graph_data",
         "//cyber/common:log",
         "//modules/common/proto:pnc_point_proto",
+        "//modules/common/util:point_factory",
         "//modules/common/vehicle_state:vehicle_state_provider",
         "//modules/map/pnc_map",
         "//modules/map/proto:map_proto",
@@ -336,6 +332,38 @@ cc_test(
         "//modules/common/util",
         "//modules/map/hdmap:hdmap_util",
         "//modules/planning/proto:planning_config_proto",
+        "@gtest//:main",
+    ],
+)
+
+cc_library(
+    name = "history",
+    srcs = [
+        "history.cc",
+    ],
+    hdrs = [
+        "history.h",
+    ],
+    copts = [
+        "-DMODULE_NAME=\\\"planning\\\"",
+    ],
+    deps = [
+        ":planning_gflags",
+        "//cyber/common",
+        "//modules/planning/proto:decision_proto",
+        "//modules/planning/proto:planning_proto",
+        "@eigen",
+    ],
+)
+
+cc_test(
+    name = "history_test",
+    size = "small",
+    srcs = [
+        "history_test.cc",
+    ],
+    deps = [
+        ":history",
         "@gtest//:main",
     ],
 )
@@ -472,6 +500,7 @@ cc_test(
     ],
     deps = [
         "open_space_info",
+        "@boost",
         "@gtest//:main",
     ],
 )

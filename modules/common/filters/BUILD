@@ -12,7 +12,7 @@ cc_library(
     ],
     deps = [
         ":digital_filter_coefficients",
-        "//cyber",
+        "//cyber/common:log",
     ],
 )
 
@@ -25,7 +25,7 @@ cc_library(
         "mean_filter.h",
     ],
     deps = [
-        "//cyber",
+        "//cyber/common:log",
     ],
 )
 
@@ -37,14 +37,8 @@ cc_library(
     hdrs = [
         "digital_filter_coefficients.h",
     ],
-)
-
-cc_library(
-    name = "filters",
     deps = [
-        ":digital_filter",
-        ":digital_filter_coefficients",
-        ":mean_filter",
+        "//cyber",
     ],
 )
 
@@ -83,6 +77,7 @@ cc_test(
     ],
     deps = [
         ":digital_filter_coefficients",
+        "//cyber",
         "@gtest//:main",
     ],
 )

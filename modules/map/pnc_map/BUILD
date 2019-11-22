@@ -12,7 +12,7 @@ cuda_library(
         "cuda_util.h",
     ],
     deps = [
-        "//cyber",
+        "//cyber/common:log",
         "@cuda",
     ],
 )
@@ -27,6 +27,7 @@ cc_test(
     ],
     deps = [
         "//modules/common/math",
+        "@cuda",
         "@gtest//:main",
     ],
 )
@@ -78,6 +79,7 @@ cc_library(
     deps = [
         ":path",
         ":route_segments",
+        "//modules/common/util:point_factory",
         "//modules/common/vehicle_state/proto:vehicle_state_proto",
         "//modules/map/hdmap",
         "//modules/planning/common:planning_gflags",
@@ -101,7 +103,6 @@ cc_test(
     ],
     deps = [
         ":path",
-        "//cyber",
         "//modules/common/util",
         "@gtest//:main",
     ],
@@ -119,7 +120,6 @@ cc_test(
     ],
     deps = [
         ":pnc_map",
-        "//cyber",
         "//modules/common/util",
         "@gtest//:main",
     ],
@@ -137,7 +137,6 @@ cc_test(
     ],
     deps = [
         ":route_segments",
-        "//cyber",
         "//modules/common/util",
         "@gtest//:main",
     ],

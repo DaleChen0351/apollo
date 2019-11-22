@@ -23,11 +23,11 @@
 #include <algorithm>
 #include <utility>
 
-#include "modules/perception/proto/perception_obstacle.pb.h"
-
 #include "cyber/common/log.h"
 #include "modules/common/time/time.h"
+#include "modules/common/util/point_factory.h"
 #include "modules/map/pnc_map/path.h"
+#include "modules/perception/proto/perception_obstacle.pb.h"
 #include "modules/planning/common/frame.h"
 #include "modules/planning/common/planning_context.h"
 #include "modules/planning/common/util/util.h"
@@ -38,13 +38,13 @@ namespace planning {
 namespace scenario {
 namespace stop_sign {
 
-using common::TrajectoryPoint;
-using common::time::Clock;
-using hdmap::HDMapUtil;
-using hdmap::LaneInfoConstPtr;
-using hdmap::OverlapInfoConstPtr;
-using hdmap::PathOverlap;
-using perception::PerceptionObstacle;
+using apollo::common::TrajectoryPoint;
+using apollo::common::time::Clock;
+using apollo::hdmap::HDMapUtil;
+using apollo::hdmap::LaneInfoConstPtr;
+using apollo::hdmap::OverlapInfoConstPtr;
+using apollo::hdmap::PathOverlap;
+using apollo::perception::PerceptionObstacle;
 
 using StopSignLaneVehicles =
     std::unordered_map<std::string, std::vector<std::string>>;
@@ -201,10 +201,8 @@ int StopSignUnprotectedStageStop::RemoveWatchVehicle(
       PerceptionObstacle::Type obstacle_type = perception_obstacle->type();
       std::string obstacle_type_name =
           PerceptionObstacle_Type_Name(obstacle_type);
-      auto obstacle_point =
-          common::util::MakePointENU(perception_obstacle->position().x(),
-                                     perception_obstacle->position().y(),
-                                     perception_obstacle->position().z());
+      auto obstacle_point = common::util::PointFactory::ToPointENU(
+          perception_obstacle->position());
 
       double distance =
           common::util::DistanceXY(stop_sign_point, obstacle_point);
@@ -226,13 +224,6 @@ int StopSignUnprotectedStageStop::RemoveWatchVehicle(
   }
 
   return 0;
-}
-
-Stage::StageStatus StopSignUnprotectedStageStop::FinishScenario() {
-  PlanningContext::Instance()->mutable_planning_status()->clear_stop_sign();
-
-  next_stage_ = ScenarioConfig::NO_STAGE;
-  return Stage::FINISHED;
 }
 
 Stage::StageStatus StopSignUnprotectedStageStop::FinishStage() {

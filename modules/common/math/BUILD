@@ -42,8 +42,9 @@ cc_library(
         "vec2d.h",
     ],
     deps = [
-        "//cyber",
+        "//cyber/common:log",
         "//modules/common/util:string_util",
+        "@com_google_absl//absl/strings",
         "@eigen",
         "@osqp",
     ],
@@ -116,7 +117,7 @@ cc_library(
         "matrix_operations.h",
     ],
     deps = [
-        "//cyber",
+        "//cyber/common:log",
         "@eigen",
     ],
 )
@@ -139,19 +140,7 @@ cc_library(
         "kalman_filter.h",
     ],
     deps = [
-        "//cyber",
-        "//modules/common/math:matrix_operations",
-        "@eigen",
-    ],
-)
-
-cc_library(
-    name = "extended_kalman_filter",
-    hdrs = [
-        "extended_kalman_filter.h",
-    ],
-    deps = [
-        "//cyber",
+        "//cyber/common:log",
         "//modules/common/math:matrix_operations",
         "@eigen",
     ],
@@ -177,6 +166,21 @@ cc_library(
     deps = [
         "//modules/common/math:linear_interpolation",
         "//modules/common/proto:pnc_point_proto",
+    ],
+)
+
+cc_library(
+    name = "mpc_osqp",
+    srcs = [
+        "mpc_osqp.cc",
+    ],
+    hdrs = [
+        "mpc_osqp.h",
+    ],
+    deps = [
+        "//cyber/common:log",
+        "@eigen",
+        "@osqp",
     ],
 )
 
@@ -219,22 +223,6 @@ cc_library(
 )
 
 cc_library(
-    name = "nonlinear_interpolation",
-    srcs = [
-        "nonlinear_interpolation.cc",
-    ],
-    hdrs = [
-        "nonlinear_interpolation.h",
-    ],
-    deps = [
-        ":geometry",
-        ":hermite_spline",
-        ":integral",
-        "//modules/common/proto:pnc_point_proto",
-    ],
-)
-
-cc_library(
     name = "integral",
     srcs = [
         "integral.cc",
@@ -243,7 +231,7 @@ cc_library(
         "integral.h",
     ],
     deps = [
-        "//cyber",
+        "//cyber/common:log",
     ],
 )
 
@@ -256,7 +244,7 @@ cc_library(
         "linear_quadratic_regulator.h",
     ],
     deps = [
-        "//cyber",
+        "//cyber/common:log",
         "@eigen",
     ],
 )
@@ -270,7 +258,7 @@ cc_library(
         "mpc_solver.h",
     ],
     deps = [
-        "//cyber",
+        "//cyber/common:log",
         "//modules/common/math/qp_solver",
         "//modules/common/math/qp_solver:active_set_qp_solver",
         "@eigen",
@@ -287,7 +275,7 @@ cc_library(
     ],
     deps = [
         ":geometry",
-        "//cyber",
+        "//cyber/common:log",
         "@eigen",
     ],
 )
@@ -298,7 +286,22 @@ cc_library(
         "hermite_spline.h",
     ],
     deps = [
-        "//cyber",
+        "//cyber/common:log",
+    ],
+)
+
+cc_test(
+    name = "mpc_osqp_test",
+    size = "small",
+    srcs = [
+        "mpc_osqp_test.cc",
+    ],
+    deps = [
+        ":mpc",
+        ":mpc_osqp",
+        "//modules/common/math/qp_solver",
+        "//modules/common/math/qp_solver:active_set_qp_solver",
+        "@gtest//:main",
     ],
 )
 
@@ -336,7 +339,7 @@ cc_test(
     ],
     deps = [
         ":linear_interpolation",
-        "//cyber",
+        "//cyber/common:log",
         "@eigen",
         "@gtest//:main",
     ],

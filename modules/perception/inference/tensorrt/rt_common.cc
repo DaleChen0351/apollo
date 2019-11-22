@@ -18,6 +18,8 @@
 
 #include <utility>
 
+#include "absl/strings/str_cat.h"
+
 namespace apollo {
 namespace perception {
 namespace inference {
@@ -70,7 +72,7 @@ void ParseNetParam(const NetParameter &net_param,
       LayerParameter fake_layer_param;
       fake_layer_param.CopyFrom(tensorrt_layer_param);
       fake_layer_param.set_type("Padding");
-      fake_layer_param.set_name("padding_split_" + std::to_string(i));
+      fake_layer_param.set_name(absl::StrCat("padding_split_", i));
       fake_layer_param.clear_pooling_param();
       auto pad_param = fake_layer_param.mutable_padding_param();
       auto pool_param = tensorrt_layer_param.mutable_pooling_param();
@@ -117,7 +119,7 @@ bool ParserConvParam(const ConvolutionParameter &conv, ConvParam *param) {
     param->padding_h = conv.pad_h();
     param->padding_w = conv.pad_w();
   } else {
-    param->padding_h = (conv.pad_size() == 0 ? 0 : conv.pad(0));
+    param->padding_h = (conv.pad().empty() ? 0 : conv.pad(0));
     param->padding_w = (conv.pad_size() > 1 ? conv.pad(1) : param->padding_h);
   }
 
@@ -128,7 +130,7 @@ bool ParserConvParam(const ConvolutionParameter &conv, ConvParam *param) {
     param->stride_h = conv.stride_h();
     param->stride_w = conv.stride_w();
   } else {
-    param->stride_h = (conv.stride_size() == 0 ? 1 : conv.stride(0));
+    param->stride_h = (conv.stride().empty() ? 1 : conv.stride(0));
     param->stride_w =
         (conv.stride_size() > 1 ? conv.stride(1) : param->stride_h);
   }
@@ -136,7 +138,7 @@ bool ParserConvParam(const ConvolutionParameter &conv, ConvParam *param) {
     return false;
   }
 
-  param->dilation = conv.dilation_size() == 0 ? 1 : conv.dilation(0);
+  param->dilation = conv.dilation().empty() ? 1 : conv.dilation(0);
   return true;
 }
 
